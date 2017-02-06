@@ -6,6 +6,8 @@ import sys
 import Queue
 from HTMLParser import HTMLParser
 
+import random
+
 # general settings
 user_thread = 10
 username = "admin"
@@ -173,7 +175,89 @@ def clean():
 
 words = load_dictionnary("dict.txt")
 
+
+def select_randomProxyFromFile(proxyFile):
+	"""
+	-> select randomly a proxy from the file
+	proxyFile
+	-> return a proxy (string)
+	"""
+	proxyData = open(proxyFile, "r")
+	listOfProxy = []
+	for line in proxyData:
+		lineWithoutBackN = line.split("\n")
+		lineWithoutBackN = lineWithoutBackN[0]
+		listOfProxy.append(lineWithoutBackN)
+	proxyData.close()
+	randomSelection = random.randint(0, len(listOfProxy))
+	selectedProxy = listOfProxy[randomSelection]
+
+	return selectedProxy
+
+
+def create_proxyFileFromWeb():
+	"""
+	-> get a list of Elite proxy from the site https://vpndock.com/liste-proxy
+	-> Store the list in proxyFromWeb.txt file
+
+	TODO:
+	- test on a real wifi connection
+	"""
+	ressource = "https://vpndock.com/liste-proxy/"
+	jar = cookielib.FileCookieJar("cookies")
+	opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(jar))
+	response = opener.open(ressource)
+	page = response.read()
+	responseFile = open("proxySiteResponse.tmp", "w")
+	responseFile.write(page)
+	responseFile.close()
+
+	htmlFile = open("proxySiteResponse.tmp", "r")
+	listOfFetchedProxy = []
+	record = 0
+	for line in htmlFile:
+		if("Liste de proxy elite du " in line):
+			record = 1
+		if(record):
+
+			lineInArray = line.split("<br/>")
+			if(len(lineInArray) > 1):
+				lineToParse = lineInArray[0]
+				lineToParse = lineToParse.replace("<p>", "")
+				lineToParse = lineToParse.replace("<blockquote>", "")
+				lineToParse = lineToParse.replace("&#48", "0")
+				lineToParse = lineToParse.replace("&#49", "1")
+				lineToParse = lineToParse.replace("&#50", "2")
+				lineToParse = lineToParse.replace("&#51", "3")
+				lineToParse = lineToParse.replace("&#52", "4")
+				lineToParse = lineToParse.replace("&#53", "5")
+				lineToParse = lineToParse.replace("&#54", "6")
+				lineToParse = lineToParse.replace("&#55", "7")
+				lineToParse = lineToParse.replace("&#56", "8")
+				lineToParse = lineToParse.replace("&#57", "9")			
+				lineToParse = lineToParse.replace(";", "")
+				listOfFetchedProxy.append(lineToParse)
+			if("</p></blockquote>" in line):
+				record = 0
+	htmlFile.close()
+
+	proxyFile = open("proxyFromWeb.txt", "w")
+	cmpt = 0
+	for proxi in listOfFetchedProxy:
+		if(cmpt == len(listOfFetchedProxy) - 1):
+			proxyFile.write(proxi)
+		else:
+			proxyFile.write(proxi+"\n")
+		cmpt += 1
+	proxyFile.close()
+
+
+
+
+
+
 # Run the Attack
 clean()
-bruter_obj = Bruter(username, words)
-bruter_obj.run_bruteforce()
+create_proxyFileFromWeb()
+#bruter_obj = Bruter(username, words)
+#bruter_obj.run_bruteforce()
