@@ -173,7 +173,7 @@ def clean():
 	strangePassword = open("strangePassword.txt", "w")
 	strangePassword.close()
 
-words = load_dictionnary("dict.txt")
+
 
 
 def select_randomProxyFromFile(proxyFile):
@@ -201,7 +201,7 @@ def create_proxyFileFromWeb():
 	-> Store the list in proxyFromWeb.txt file
 
 	TODO:
-	- test on a real wifi connection
+	- not always working (problem with <br /> character while parsing response)
 	"""
 	ressource = "https://vpndock.com/liste-proxy/"
 	jar = cookielib.FileCookieJar("cookies")
@@ -220,7 +220,8 @@ def create_proxyFileFromWeb():
 			record = 1
 		if(record):
 
-			lineInArray = line.split("<br/>")
+			# Sometimes it's seems to be "<br/>", not "<br />"
+			lineInArray = line.split("<br />")
 			if(len(lineInArray) > 1):
 				lineToParse = lineInArray[0]
 				lineToParse = lineToParse.replace("<p>", "")
@@ -234,7 +235,7 @@ def create_proxyFileFromWeb():
 				lineToParse = lineToParse.replace("&#54", "6")
 				lineToParse = lineToParse.replace("&#55", "7")
 				lineToParse = lineToParse.replace("&#56", "8")
-				lineToParse = lineToParse.replace("&#57", "9")			
+				lineToParse = lineToParse.replace("&#57", "9")		
 				lineToParse = lineToParse.replace(";", "")
 				listOfFetchedProxy.append(lineToParse)
 			if("</p></blockquote>" in line):
@@ -259,5 +260,6 @@ def create_proxyFileFromWeb():
 # Run the Attack
 clean()
 create_proxyFileFromWeb()
+#words = load_dictionnary("dict.txt")
 #bruter_obj = Bruter(username, words)
 #bruter_obj.run_bruteforce()
