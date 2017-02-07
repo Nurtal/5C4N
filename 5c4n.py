@@ -6,7 +6,11 @@ import sys
 import Queue
 from HTMLParser import HTMLParser
 
+
+
+
 import random
+import datetime
 
 # general settings
 user_thread = 10
@@ -39,6 +43,8 @@ class Bruter(object):
 			brute = self.password_q.get().rstrip()
 			
 			# TODO : ADD PROXIE MOD
+			proxy = select_randomProxyFromFile("proxyFromWeb.txt")
+			print "=> " +str(proxy)
 			jar = cookielib.FileCookieJar("cookies")
 			opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(jar))
 			
@@ -202,11 +208,18 @@ def create_proxyFileFromWeb():
 
 	TODO:
 	- not always working (problem with <br /> character while parsing response)
+	- catch html
 	"""
 	ressource = "https://vpndock.com/liste-proxy/"
 	jar = cookielib.FileCookieJar("cookies")
 	opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(jar))
-	response = opener.open(ressource)
+	
+	# Handle http error
+	try:
+		response = opener.open(ressource)
+	except HTTPError as e:
+		print "tardis"
+
 	page = response.read()
 	responseFile = open("proxySiteResponse.tmp", "w")
 	responseFile.write(page)
@@ -217,6 +230,15 @@ def create_proxyFileFromWeb():
 	record = 0
 	for line in htmlFile:
 		if("Liste de proxy elite du " in line):
+
+			lineInArray = line.split(" ")
+			for element in lineInArray:
+				if("/" in element and "<" not in element):
+					elementInArray = element.split("/")
+					day = elementInArray[0]
+					month = elementInArray[1]
+					date = str(day)+"_"+str(month)
+
 			record = 1
 		if(record):
 
@@ -242,7 +264,7 @@ def create_proxyFileFromWeb():
 				record = 0
 	htmlFile.close()
 
-	proxyFile = open("proxyFromWeb.txt", "w")
+	proxyFile = open("proxyFromWeb_"+date+".txt", "w")
 	cmpt = 0
 	for proxi in listOfFetchedProxy:
 		if(cmpt == len(listOfFetchedProxy) - 1):
@@ -253,13 +275,43 @@ def create_proxyFileFromWeb():
 	proxyFile.close()
 
 
+def update_proxyFileFromWeb():
+	"""
+	-> Try to open a proxy file with the current date
+	-> if fail (i.e there is no proxy file with today date)
+	   run the create_proxyFileFromWeb() function
+	"""
+
+	now = datetime.datetime.now()
+	month = now.month
+	day = now.day
+	if(day < 10):
+		day = "0"+str(day)
+	if(month < 10):
+		month = "0"+str(month)
+	date = str(day)+"_"+str(month)
+
+	try:
+		testFile = open("proxyFromWeb_"+date+".txt")
+		testFile.close()
+		print "[*] proxy file up-to-date"
+	except:
+		print "[!] can't find & open up-to-date proxy file"
+		print "[+] create new proxy file from web"
+		create_proxyFileFromWeb()
+
+
+
 
 
 
 
 # Run the Attack
-clean()
-create_proxyFileFromWeb()
+#clean()
+#create_proxyFileFromWeb()
+#update_proxyFileFromWeb()
+#proxy = select_randomProxyFromFile("proxyFromWeb.txt")
+#print "=> " +str(proxy)
 #words = load_dictionnary("dict.txt")
 #bruter_obj = Bruter(username, words)
 #bruter_obj.run_bruteforce()
