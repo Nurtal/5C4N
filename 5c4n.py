@@ -292,7 +292,7 @@ def update_proxyFileFromWeb():
 	date = str(day)+"_"+str(month)
 
 	try:
-		testFile = open("proxyFromWeb_"+date+".txt")
+		testFile = open("proxyFromWeb_"+date+".txt", "r")
 		testFile.close()
 		print "[*] proxy file up-to-date"
 	except:
