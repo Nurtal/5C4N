@@ -9,8 +9,10 @@ from HTMLParser import HTMLParser
 
 
 
+
 import random
 import datetime
+import re
 
 # general settings
 user_thread = 10
@@ -195,7 +197,7 @@ def select_randomProxyFromFile(proxyFile):
 		lineWithoutBackN = lineWithoutBackN[0]
 		listOfProxy.append(lineWithoutBackN)
 	proxyData.close()
-	randomSelection = random.randint(0, len(listOfProxy))
+	randomSelection = random.randint(0, len(listOfProxy) -1)
 	selectedProxy = listOfProxy[randomSelection]
 
 	return selectedProxy
@@ -301,7 +303,83 @@ def update_proxyFileFromWeb():
 		create_proxyFileFromWeb()
 
 
+def test_proxy(proxy):
+	"""
+	IN PROGRESS
+	"""
 
+	print proxy
+	
+	# Connect to a localisation site using a proxy
+	# Problem with proxy (timeout, not even sure the whole thing work)
+
+	
+	localisationSiteUrl = "http://www.ipinfodb.com/my_ip_location.php"
+	#localisationSiteUrl = "https://geoiptool.com/"
+	jar = cookielib.FileCookieJar("cookies")
+	request = urllib2.Request(localisationSiteUrl)
+	
+
+	proxy_handler = urllib2.ProxyHandler({'http': proxy})
+	#proxy_auth_handler = urllib2.HTTPBasicAuthHandler()
+	#opener = urllib2.build_opener(proxy_handler, proxy_auth_handler)
+	#response = opener.open(localisationSiteUrl)
+
+	#opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(jar), urllib2.ProxyHandler({'http': proxy}))
+	#opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(jar))
+	opener = urllib2.build_opener(proxy_handler)
+	
+	#responseFile = open("proxySiteResponse.tmp", "w")
+	#responseFile.write(page)
+	#responseFile.close()
+
+
+
+	# get response from the site
+	response = opener.open(request)
+	page = response.read()
+	tmpFile = open("localisationResponse.tmp", "w")
+	tmpFile.write(page)
+	tmpFile.close()
+
+	# parse response and get data ( i.e check ip adress & country)
+	dataToParse = open("localisationResponse.tmp", "r")
+	record = 0
+	ipAdress = "not found"
+	country = "not found"
+	city = "not found"
+	for line in dataToParse:
+		lineWithoutBackN = line.split("\n")
+		lineWithoutBackN = lineWithoutBackN[0]
+		if(record):
+			
+			if(" <li>IP address : " in lineWithoutBackN):
+				m = re.search('([0-9]{1,}\.[0-9]{1,}\.[0-9]{1,}\.[0-9]{1,})', lineWithoutBackN)
+				ipAdress = str(m.group(0))
+			if("<li>Country" in lineWithoutBackN):
+				lineInArray = lineWithoutBackN.split(":")
+				lineInArray = lineInArray[1].split("<")
+				country = lineInArray[0]
+			if("<li>City" in lineWithoutBackN):
+				lineInArray = lineWithoutBackN.split(":")
+				lineInArray = lineInArray[1].split("<")
+				city = lineInArray[0]
+
+		if("Information is provided by <a href=\"http://www.ip2location.com/?rid=1094\"" in lineWithoutBackN):
+			record = 1
+		if("Inaccurate result? Click <a href=\"report.php?ip=91.217.154.35\"" in lineWithoutBackN):
+			record = 0
+	dataToParse.close()
+
+	# proxy evaluation
+	ipProxy = proxy.split(":")
+	ipProxy = ipProxy[0]
+	if(ipProxy != ipAdress):
+		print "[!] proxy "+str(ipProxy)+" is not safe"
+		print "[!] we are traced back to "+ ipAdress +" ("+str(city)+", "+str(country) +")"
+	else:
+		print "[*] proxy "+str(ipProxy)+" is safe"
+		print "[*] connection from "+str(city)+", "+str(country)
 
 
 
@@ -310,7 +388,8 @@ def update_proxyFileFromWeb():
 #clean()
 #create_proxyFileFromWeb()
 #update_proxyFileFromWeb()
-#proxy = select_randomProxyFromFile("proxyFromWeb.txt")
+proxy = select_randomProxyFromFile("proxyFromWeb.txt")
+test_proxy(proxy)
 #print "=> " +str(proxy)
 #words = load_dictionnary("dict.txt")
 #bruter_obj = Bruter(username, words)
