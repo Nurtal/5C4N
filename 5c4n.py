@@ -5,6 +5,7 @@ import threading
 import sys
 import Queue
 from HTMLParser import HTMLParser
+import socket
 
 
 
@@ -266,6 +267,60 @@ def create_proxyFileFromWeb():
 				record = 0
 	htmlFile.close()
 
+
+
+	#############################
+	# Playing with another site #
+	#############################
+	ressource2 = "http://www.gatherproxy.com/proxylist/anonymity/?t=Elite"
+	jar = cookielib.FileCookieJar("cookies")
+	opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(jar))
+	
+	# Handle http error
+	try:
+		response = opener.open(ressource2)
+	except HTTPError as e:
+		print "tardis"
+
+	page = response.read()
+	responseFile = open("proxySiteResponse2.tmp", "w")
+	responseFile.write(page)
+	responseFile.close()
+
+	htmlFile = open("proxySiteResponse2.tmp", "r")
+	record = 0
+	for line in htmlFile:
+
+		if("id=\"tblproxy\"" in line):
+			record = 1
+		if(record and "</table>" in line):
+			record = 0
+		if(record and "gp.insertPrx" in line):
+			lineInArray = line.split("{")
+			lineInArray = lineInArray[1].split("}")
+			lineInArray = lineInArray[0].split(",")
+			for element in lineInArray:
+				if("PROXY_IP" in element):
+					elementInArray = element.split(":")
+					proxy_adress = elementInArray[1]
+					proxy_adress = proxy_adress.replace("\"", "")
+				if("PROXY_PORT" in element):
+					elementInArray = element.split(":")
+					proxy_port = elementInArray[1]
+					proxy_port = proxy_port.replace("\"", "")
+					proxy_port = int(proxy_port, 16)
+
+			proxy = str(proxy_adress)+":"+str(proxy_port)
+			listOfFetchedProxy.append(proxy)
+
+	htmlFile.close()
+
+
+
+
+
+
+	# Write proxy file
 	proxyFile = open("proxyFromWeb_"+date+".txt", "w")
 	cmpt = 0
 	for proxi in listOfFetchedProxy:
@@ -275,6 +330,10 @@ def create_proxyFileFromWeb():
 			proxyFile.write(proxi+"\n")
 		cmpt += 1
 	proxyFile.close()
+
+
+
+
 
 
 def update_proxyFileFromWeb():
@@ -306,6 +365,10 @@ def update_proxyFileFromWeb():
 def test_proxy(proxy):
 	"""
 	IN PROGRESS
+	-> Seems to work !!!
+	TODO:
+	-> check if timeout come from bad proxies
+	-> deal with connection timeout
 	"""
 
 	print proxy
@@ -316,6 +379,7 @@ def test_proxy(proxy):
 	
 	localisationSiteUrl = "http://www.ipinfodb.com/my_ip_location.php"
 	#localisationSiteUrl = "https://geoiptool.com/"
+	# http://www.my-ip-address.net/fr
 	jar = cookielib.FileCookieJar("cookies")
 	request = urllib2.Request(localisationSiteUrl)
 	
@@ -325,9 +389,10 @@ def test_proxy(proxy):
 	#opener = urllib2.build_opener(proxy_handler, proxy_auth_handler)
 	#response = opener.open(localisationSiteUrl)
 
-	#opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(jar), urllib2.ProxyHandler({'http': proxy}))
+	opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(jar), urllib2.ProxyHandler({'http': proxy}))
 	#opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(jar))
-	opener = urllib2.build_opener(proxy_handler)
+	#opener = urllib2.build_opener(proxy_handler)
+	urllib2.install_opener(opener) # to try
 	
 	#responseFile = open("proxySiteResponse.tmp", "w")
 	#responseFile.write(page)
@@ -336,50 +401,56 @@ def test_proxy(proxy):
 
 
 	# get response from the site
-	response = opener.open(request)
-	page = response.read()
-	tmpFile = open("localisationResponse.tmp", "w")
-	tmpFile.write(page)
-	tmpFile.close()
+	targetReached = 1
+	try:
+		response = opener.open(request)
+	except socket.timeout as e:
+		print "[!] Connection timeout"
+		targetReached = 0
+	if(targetReached):
+		page = response.read()
+		tmpFile = open("localisationResponse.tmp", "w")
+		tmpFile.write(page)
+		tmpFile.close()
 
-	# parse response and get data ( i.e check ip adress & country)
-	dataToParse = open("localisationResponse.tmp", "r")
-	record = 0
-	ipAdress = "not found"
-	country = "not found"
-	city = "not found"
-	for line in dataToParse:
-		lineWithoutBackN = line.split("\n")
-		lineWithoutBackN = lineWithoutBackN[0]
-		if(record):
-			
-			if(" <li>IP address : " in lineWithoutBackN):
-				m = re.search('([0-9]{1,}\.[0-9]{1,}\.[0-9]{1,}\.[0-9]{1,})', lineWithoutBackN)
-				ipAdress = str(m.group(0))
-			if("<li>Country" in lineWithoutBackN):
-				lineInArray = lineWithoutBackN.split(":")
-				lineInArray = lineInArray[1].split("<")
-				country = lineInArray[0]
-			if("<li>City" in lineWithoutBackN):
-				lineInArray = lineWithoutBackN.split(":")
-				lineInArray = lineInArray[1].split("<")
-				city = lineInArray[0]
+		# parse response and get data ( i.e check ip adress & country)
+		dataToParse = open("localisationResponse.tmp", "r")
+		record = 0
+		ipAdress = "not found"
+		country = "not found"
+		city = "not found"
+		for line in dataToParse:
+			lineWithoutBackN = line.split("\n")
+			lineWithoutBackN = lineWithoutBackN[0]
+			if(record):
+				
+				if(" <li>IP address : " in lineWithoutBackN):
+					m = re.search('([0-9]{1,}\.[0-9]{1,}\.[0-9]{1,}\.[0-9]{1,})', lineWithoutBackN)
+					ipAdress = str(m.group(0))
+				if("<li>Country" in lineWithoutBackN):
+					lineInArray = lineWithoutBackN.split(":")
+					lineInArray = lineInArray[1].split("<")
+					country = lineInArray[0]
+				if("<li>City" in lineWithoutBackN):
+					lineInArray = lineWithoutBackN.split(":")
+					lineInArray = lineInArray[1].split("<")
+					city = lineInArray[0]
 
-		if("Information is provided by <a href=\"http://www.ip2location.com/?rid=1094\"" in lineWithoutBackN):
-			record = 1
-		if("Inaccurate result? Click <a href=\"report.php?ip=91.217.154.35\"" in lineWithoutBackN):
-			record = 0
-	dataToParse.close()
+			if("Information is provided by <a href=\"http://www.ip2location.com/?rid=1094\"" in lineWithoutBackN):
+				record = 1
+			if("Inaccurate result? Click <a href=\"report.php?ip=91.217.154.35\"" in lineWithoutBackN):
+				record = 0
+		dataToParse.close()
 
-	# proxy evaluation
-	ipProxy = proxy.split(":")
-	ipProxy = ipProxy[0]
-	if(ipProxy != ipAdress):
-		print "[!] proxy "+str(ipProxy)+" is not safe"
-		print "[!] we are traced back to "+ ipAdress +" ("+str(city)+", "+str(country) +")"
-	else:
-		print "[*] proxy "+str(ipProxy)+" is safe"
-		print "[*] connection from "+str(city)+", "+str(country)
+		# proxy evaluation
+		ipProxy = proxy.split(":")
+		ipProxy = ipProxy[0]
+		if(ipProxy != ipAdress):
+			print "[!] proxy "+str(ipProxy)+" is not safe"
+			print "[!] we are traced back to "+ ipAdress +" ("+str(city)+", "+str(country) +")"
+		else:
+			print "[*] proxy "+str(ipProxy)+" is safe"
+			print "[*] connection from "+str(city)+", "+str(country)
 
 
 
@@ -387,7 +458,7 @@ def test_proxy(proxy):
 # Run the Attack
 #clean()
 #create_proxyFileFromWeb()
-#update_proxyFileFromWeb()
+update_proxyFileFromWeb()
 proxy = select_randomProxyFromFile("proxyFromWeb.txt")
 test_proxy(proxy)
 #print "=> " +str(proxy)
