@@ -500,6 +500,7 @@ def test_all_proxy():
 		except Exception, exc:
 			proxy_safe = 0
 			print exc
+			signal.alarm(0)
 
 
 		if(proxy_safe):
