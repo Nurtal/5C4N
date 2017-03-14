@@ -6,7 +6,7 @@ import sys
 import Queue
 from HTMLParser import HTMLParser
 import socket
-
+import signal
 
 
 
@@ -371,7 +371,7 @@ def test_proxy(proxy):
 	-> deal with connection timeout
 	"""
 
-	print proxy
+	print "[*] Test proxy: " +str(proxy)
 	
 	# Connect to a localisation site using a proxy
 	# Problem with proxy (timeout, not even sure the whole thing work)
@@ -455,16 +455,27 @@ def test_proxy(proxy):
 			return 1
 
 
-# Create a good proxy list
-clean()
-update_proxyFileFromWeb()
+
+
 
 def test_all_proxy():
 	"""
 	IN PROGRESS
 	TODO:
 		-check sur le temp d'execution du test
+			-> work for the first iteration but not after
 	"""
+	
+	def handler(signum, frame):
+		print "[!] Timeout "
+		raise Exception("[!] Switch to next proxy")
+
+	# register the signal function handler
+	signal.signal(signal.SIGALRM, handler)
+
+	# Define timeout
+	signal.alarm(5)
+
 	now = datetime.datetime.now()
 	month = now.month
 	day = now.day
@@ -482,7 +493,14 @@ def test_all_proxy():
 		line = line.split("\n")
 		line = line[0]
 		proxy = line
-		proxy_safe = test_proxy(proxy)
+
+		# Problem there
+		try:
+			proxy_safe = test_proxy(proxy)
+		except Exception, exc:
+			proxy_safe = 0
+			print exc
+
 
 		if(proxy_safe):
 			proxy_file_safe.write(proxy+"\n")
@@ -492,7 +510,19 @@ def test_all_proxy():
 
 
 
-# Run the Attack
+
+#--------------------------#
+# Create a good proxy list #
+#--------------------------#
+clean()
+update_proxyFileFromWeb()
+test_all_proxy()
+
+
+
+#----------------#
+# Run the Attack #
+#----------------#
 """
 clean()
 #create_proxyFileFromWeb()
