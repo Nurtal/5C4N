@@ -448,20 +448,59 @@ def test_proxy(proxy):
 		if(ipProxy != ipAdress):
 			print "[!] proxy "+str(ipProxy)+" is not safe"
 			print "[!] we are traced back to "+ ipAdress +" ("+str(city)+", "+str(country) +")"
+			return 0
 		else:
 			print "[*] proxy "+str(ipProxy)+" is safe"
 			print "[*] connection from "+str(city)+", "+str(country)
+			return 1
 
+
+# Create a good proxy list
+clean()
+update_proxyFileFromWeb()
+
+def test_all_proxy():
+	"""
+	IN PROGRESS
+	TODO:
+		-check sur le temp d'execution du test
+	"""
+	now = datetime.datetime.now()
+	month = now.month
+	day = now.day
+	if(day < 10):
+		day = "0"+str(day)
+	if(month < 10):
+		month = "0"+str(month)
+	date = str(day)+"_"+str(month)
+	proxy_file_name = "proxyFromWeb_"+date+".txt"
+	proxy_file_name_secured = "proxyFromWeb_"+date+"_secured.txt"
+
+	proxy_file_safe = open(proxy_file_name_secured, "w")
+	proxy_file = open(proxy_file_name, "r")
+	for line in proxy_file:
+		line = line.split("\n")
+		line = line[0]
+		proxy = line
+		proxy_safe = test_proxy(proxy)
+
+		if(proxy_safe):
+			proxy_file_safe.write(proxy+"\n")
+
+	proxy_file.close()
+	proxy_file_safe.close()
 
 
 
 # Run the Attack
-#clean()
+"""
+clean()
 #create_proxyFileFromWeb()
 update_proxyFileFromWeb()
-proxy = select_randomProxyFromFile("proxyFromWeb.txt")
+proxy = select_randomProxyFromFile("proxyFromWeb_21_02.txt")
 test_proxy(proxy)
 #print "=> " +str(proxy)
 #words = load_dictionnary("dict.txt")
 #bruter_obj = Bruter(username, words)
 #bruter_obj.run_bruteforce()
+"""
