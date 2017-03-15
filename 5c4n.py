@@ -8,7 +8,7 @@ from HTMLParser import HTMLParser
 import socket
 import signal
 
-
+from multiprocessing import Process, Queue
 
 
 import random
@@ -27,6 +27,8 @@ target_post = "http://localhost/joomla/administrator/index.php"
 username_field= "username"
 password_field= "passwd"
 success_check = "Configuration"
+
+
 
 class Bruter(object):
 
@@ -458,24 +460,48 @@ def test_proxy(proxy):
 
 
 
-def test_all_proxy():
+def longfunction(queue):
 	"""
-	IN PROGRESS
 	TODO:
-		-check sur le temp d'execution du test
-			-> work for the first iteration but not after
+		- Rename the function
+	"""
+	proxy = select_randomProxyFromFile("proxyFromWeb_21_02.txt")
+	response = test_proxy(proxy)
+	queue.put(proxy)
+
+
+def call_of_longfunction(time_limit):
+	"""
+	-> time_limit is an integer, number of second to wait
+	   before kill the process
+	TODO:
+		- handle 404 Ecxeption
+		- Rename the function
+	"""
+	queue = Queue() #using to get the result
+	proc = Process(target=longfunction, args=(queue,)) #creation of a process calling longfunction with the specified arguments
+	proc.start() #lauching the processus on another thread
+	try:
+		res = queue.get(timeout=time_limit) #getting the resultat under 1 second or stop
+		proc.join() #proper delete if the computation has take less than timeout seconds
+		return 1
+	except: #catching every exception type
+		proc.terminate() #kill the process
+		print "[*] Too long, switching to next proxy"
+		return 0
+
+
+
+
+
+def test_all_proxy(time_limit):
+	"""
+	-> time_limit is an integer, number of second to wait
+	   before kill test of proxy
+	TODO:
+		- handle 404 & 111 and other web exceptions
 	"""
 	
-	def handler(signum, frame):
-		print "[!] Timeout "
-		raise Exception("[!] Switch to next proxy")
-
-	# register the signal function handler
-	signal.signal(signal.SIGALRM, handler)
-
-	# Define timeout
-	signal.alarm(5)
-
 	now = datetime.datetime.now()
 	month = now.month
 	day = now.day
@@ -494,14 +520,8 @@ def test_all_proxy():
 		line = line[0]
 		proxy = line
 
-		# Problem there
-		try:
-			proxy_safe = test_proxy(proxy)
-		except Exception, exc:
-			proxy_safe = 0
-			print exc
-			signal.alarm(0)
-
+		#proxy_safe = test_proxy(proxy)
+		proxy_safe = call_of_longfunction(time_limit)
 
 		if(proxy_safe):
 			proxy_file_safe.write(proxy+"\n")
@@ -512,12 +532,13 @@ def test_all_proxy():
 
 
 
+
 #--------------------------#
 # Create a good proxy list #
 #--------------------------#
 clean()
 update_proxyFileFromWeb()
-test_all_proxy()
+test_all_proxy(5)
 
 
 
