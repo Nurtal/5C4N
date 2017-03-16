@@ -2,7 +2,7 @@ import cookielib
 import urllib
 import urllib2
 
-
+"""
 # Store the cookies and create an opener that will hold them
 cj = cookielib.CookieJar()
 opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
@@ -36,10 +36,8 @@ req = urllib2.Request(authentication_url, data)
 resp = urllib2.urlopen(req)
 
 contents = resp.read()
-
-
 error = "Username and password do not match or you do not have an account yet"
-
+"""
 
 """
 From black hat Python
@@ -161,7 +159,7 @@ class BruteParser(HTMLParser):
 
 
 
-
+"""
 words = ["password1", "password2", "killer", "password4", "password5", "pass6", "po", "p12", "xale"]
 #words = ["killer"]
 
@@ -172,3 +170,32 @@ words = [queryQ.put(query) for query in words]
 
 bruter_obj = Bruter(username, queryQ)
 bruter_obj.run_bruteforce()
+"""
+
+
+
+
+"""TEST SPACE"""
+import signal
+
+def handler(signum, frame):
+	print "Forever is over!"
+	raise Exception("end of time")
+
+def loop_forever():
+	import time
+	while 1:
+		print "sec"
+		time.sleep(1)
+
+# register the signal function handler
+signal.signal(signal.SIGALRM, handler)
+
+# Define timeout
+signal.alarm(10)
+
+try:
+	loop_forever()
+except Exception, exc:
+	print exc
+
