@@ -2,7 +2,8 @@ import cookielib
 import urllib
 import urllib2
 
-"""
+import os
+
 # Store the cookies and create an opener that will hold them
 cj = cookielib.CookieJar()
 opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
@@ -26,6 +27,8 @@ payload = {
   'passwd': 'killer'
   }
 
+
+"""
 # Use urllib to encode the payload
 data = urllib.urlencode(payload)
 
@@ -174,10 +177,10 @@ bruter_obj.run_bruteforce()
 
 
 
-
 """TEST SPACE"""
 import signal
 
+"""
 def handler(signum, frame):
 	print "Forever is over!"
 	raise Exception("end of time")
@@ -198,4 +201,8 @@ try:
 	loop_forever()
 except Exception, exc:
 	print exc
+"""
 
+
+# run script in another terminal
+os.system("gnome-terminal -e 'bash -c \"python trashlib2.py; exec bash\"'")
