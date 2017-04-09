@@ -1,0 +1,370 @@
+import urllib2
+import urllib
+import cookielib
+import threading
+import sys
+import Queue
+from HTMLParser import HTMLParser
+import socket
+import signal
+
+from multiprocessing import Process, Queue
+import multiprocessing
+
+import random
+import datetime
+import re
+
+
+
+
+def select_randomProxyFromFile(proxyFile):
+	"""
+	-> select randomly a proxy from the file
+	proxyFile
+	-> return a proxy (string)
+	"""
+	proxyData = open(proxyFile, "r")
+	listOfProxy = []
+	for line in proxyData:
+		lineWithoutBackN = line.split("\n")
+		lineWithoutBackN = lineWithoutBackN[0]
+		listOfProxy.append(lineWithoutBackN)
+	proxyData.close()
+	randomSelection = random.randint(0, len(listOfProxy) -1)
+	selectedProxy = listOfProxy[randomSelection]
+
+	return selectedProxy
+
+
+def create_proxyFileFromWeb():
+	"""
+	-> get a list of Elite proxy from the site https://vpndock.com/liste-proxy
+	-> Store the list in proxyFromWeb.txt file
+
+	TODO:
+	- not always working (problem with <br /> character while parsing response)
+	- catch html
+	"""
+	ressource = "https://vpndock.com/liste-proxy/"
+	jar = cookielib.FileCookieJar("cookies")
+	opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(jar))
+	
+	# Handle http error
+	try:
+		response = opener.open(ressource)
+	except HTTPError as e:
+		print "tardis"
+
+	page = response.read()
+	responseFile = open("proxySiteResponse.tmp", "w")
+	responseFile.write(page)
+	responseFile.close()
+
+	htmlFile = open("proxySiteResponse.tmp", "r")
+	listOfFetchedProxy = []
+	record = 0
+	for line in htmlFile:
+		if("Liste de proxy elite du " in line):
+
+			lineInArray = line.split(" ")
+			for element in lineInArray:
+				if("/" in element and "<" not in element):
+					elementInArray = element.split("/")
+					day = elementInArray[0]
+					month = elementInArray[1]
+					date = str(day)+"_"+str(month)
+
+			record = 1
+		if(record):
+
+			# Sometimes it's seems to be "<br/>", not "<br />"
+			lineInArray = line.split("<br />")
+			if(len(lineInArray) > 1):
+				lineToParse = lineInArray[0]
+				lineToParse = lineToParse.replace("<p>", "")
+				lineToParse = lineToParse.replace("<blockquote>", "")
+				lineToParse = lineToParse.replace("&#48", "0")
+				lineToParse = lineToParse.replace("&#49", "1")
+				lineToParse = lineToParse.replace("&#50", "2")
+				lineToParse = lineToParse.replace("&#51", "3")
+				lineToParse = lineToParse.replace("&#52", "4")
+				lineToParse = lineToParse.replace("&#53", "5")
+				lineToParse = lineToParse.replace("&#54", "6")
+				lineToParse = lineToParse.replace("&#55", "7")
+				lineToParse = lineToParse.replace("&#56", "8")
+				lineToParse = lineToParse.replace("&#57", "9")		
+				lineToParse = lineToParse.replace(";", "")
+				listOfFetchedProxy.append(lineToParse)
+			if("</p></blockquote>" in line):
+				record = 0
+	htmlFile.close()
+
+
+
+	#############################
+	# Playing with another site #
+	#############################
+	ressource2 = "http://www.gatherproxy.com/proxylist/anonymity/?t=Elite"
+	jar = cookielib.FileCookieJar("cookies")
+	opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(jar))
+	
+	# Handle http error
+	try:
+		response = opener.open(ressource2)
+	except HTTPError as e:
+		print "tardis"
+
+	page = response.read()
+	responseFile = open("proxySiteResponse2.tmp", "w")
+	responseFile.write(page)
+	responseFile.close()
+
+	htmlFile = open("proxySiteResponse2.tmp", "r")
+	record = 0
+	for line in htmlFile:
+
+		if("id=\"tblproxy\"" in line):
+			record = 1
+		if(record and "</table>" in line):
+			record = 0
+		if(record and "gp.insertPrx" in line):
+			lineInArray = line.split("{")
+			lineInArray = lineInArray[1].split("}")
+			lineInArray = lineInArray[0].split(",")
+			for element in lineInArray:
+				if("PROXY_IP" in element):
+					elementInArray = element.split(":")
+					proxy_adress = elementInArray[1]
+					proxy_adress = proxy_adress.replace("\"", "")
+				if("PROXY_PORT" in element):
+					elementInArray = element.split(":")
+					proxy_port = elementInArray[1]
+					proxy_port = proxy_port.replace("\"", "")
+					proxy_port = int(proxy_port, 16)
+
+			proxy = str(proxy_adress)+":"+str(proxy_port)
+			listOfFetchedProxy.append(proxy)
+
+	htmlFile.close()
+
+
+
+
+
+
+	# Write proxy file
+	proxyFile = open("proxyFromWeb_"+date+".txt", "w")
+	cmpt = 0
+	for proxi in listOfFetchedProxy:
+		if(cmpt == len(listOfFetchedProxy) - 1):
+			proxyFile.write(proxi)
+		else:
+			proxyFile.write(proxi+"\n")
+		cmpt += 1
+	proxyFile.close()
+
+
+
+
+
+
+def update_proxyFileFromWeb():
+	"""
+	-> Try to open a proxy file with the current date
+	-> if fail (i.e there is no proxy file with today date)
+	   run the create_proxyFileFromWeb() function
+	"""
+
+	now = datetime.datetime.now()
+	month = now.month
+	day = now.day
+	if(day < 10):
+		day = "0"+str(day)
+	if(month < 10):
+		month = "0"+str(month)
+	date = str(day)+"_"+str(month)
+
+	try:
+		testFile = open("proxyFromWeb_"+date+".txt", "r")
+		testFile.close()
+		print "[*] proxy file up-to-date"
+	except:
+		print "[!] can't find & open up-to-date proxy file"
+		print "[+] create new proxy file from web"
+		create_proxyFileFromWeb()
+
+
+def test_proxy(proxy):
+	"""
+	IN PROGRESS
+	-> Seems to work !!!
+	TODO:
+	-> check if timeout come from bad proxies
+	-> deal with connection timeout
+	"""
+
+	print "[*] Test proxy: " +str(proxy)
+	
+	# Connect to a localisation site using a proxy
+	# Problem with proxy (timeout, not even sure the whole thing work)
+
+	
+	localisationSiteUrl = "http://www.ipinfodb.com/my_ip_location.php"
+	#localisationSiteUrl = "https://geoiptool.com/"
+	# http://www.my-ip-address.net/fr
+	jar = cookielib.FileCookieJar("cookies")
+	request = urllib2.Request(localisationSiteUrl)
+	
+
+	proxy_handler = urllib2.ProxyHandler({'http': proxy})
+	#proxy_auth_handler = urllib2.HTTPBasicAuthHandler()
+	#opener = urllib2.build_opener(proxy_handler, proxy_auth_handler)
+	#response = opener.open(localisationSiteUrl)
+
+	opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(jar), urllib2.ProxyHandler({'http': proxy}))
+	#opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(jar))
+	#opener = urllib2.build_opener(proxy_handler)
+	urllib2.install_opener(opener) # to try
+	
+	#responseFile = open("proxySiteResponse.tmp", "w")
+	#responseFile.write(page)
+	#responseFile.close()
+
+
+
+	# get response from the site
+	targetReached = 1
+	try:
+		response = opener.open(request)
+	except socket.timeout as e:
+		print "[!] Connection timeout"
+		targetReached = 0
+	if(targetReached):
+		page = response.read()
+		tmpFile = open("localisationResponse.tmp", "w")
+		tmpFile.write(page)
+		tmpFile.close()
+
+		# parse response and get data ( i.e check ip adress & country)
+		dataToParse = open("localisationResponse.tmp", "r")
+		record = 0
+		ipAdress = "not found"
+		country = "not found"
+		city = "not found"
+		for line in dataToParse:
+			lineWithoutBackN = line.split("\n")
+			lineWithoutBackN = lineWithoutBackN[0]
+			if(record):
+				
+				if(" <li>IP address : " in lineWithoutBackN):
+					m = re.search('([0-9]{1,}\.[0-9]{1,}\.[0-9]{1,}\.[0-9]{1,})', lineWithoutBackN)
+					ipAdress = str(m.group(0))
+				if("<li>Country" in lineWithoutBackN):
+					lineInArray = lineWithoutBackN.split(":")
+					lineInArray = lineInArray[1].split("<")
+					country = lineInArray[0]
+				if("<li>City" in lineWithoutBackN):
+					lineInArray = lineWithoutBackN.split(":")
+					lineInArray = lineInArray[1].split("<")
+					city = lineInArray[0]
+
+			if("Information is provided by <a href=\"http://www.ip2location.com/?rid=1094\"" in lineWithoutBackN):
+				record = 1
+			if("Inaccurate result? Click <a href=\"report.php?ip=91.217.154.35\"" in lineWithoutBackN):
+				record = 0
+		dataToParse.close()
+
+		# proxy evaluation
+		ipProxy = proxy.split(":")
+		ipProxy = ipProxy[0]
+		if(ipProxy != ipAdress):
+			print "[!] proxy "+str(ipProxy)+" is not safe"
+			print "[!] we are traced back to "+ ipAdress +" ("+str(city)+", "+str(country) +")"
+			return 0
+		else:
+			print "[*] proxy "+str(ipProxy)+" is safe"
+			print "[*] connection from "+str(city)+", "+str(country)
+			return 1
+
+
+
+
+
+def longfunction(queue):
+	"""
+	TODO:
+		- Rename the function
+	"""
+	now = datetime.datetime.now()
+	month = now.month
+	day = now.day
+	if(day < 10):
+		day = "0"+str(day)
+	if(month < 10):
+		month = "0"+str(month)
+	date = str(day)+"_"+str(month)
+	proxy_file_name = "proxyFromWeb_"+date+".txt"
+	proxy = select_randomProxyFromFile(proxy_file_name)
+	response = test_proxy(proxy)
+	queue.put(proxy)
+
+
+def call_of_longfunction(time_limit):
+	"""
+	-> time_limit is an integer, number of second to wait
+	   before kill the process
+	TODO:
+		- handle 404 Ecxeption
+		- Rename the function
+	"""
+	queue = Queue() #using to get the result
+	proc = Process(target=longfunction, args=(queue,)) #creation of a process calling longfunction with the specified arguments
+	proc.start() #lauching the processus on another thread
+	try:
+		res = queue.get(timeout=time_limit) #getting the resultat under 1 second or stop
+		proc.join() #proper delete if the computation has take less than timeout seconds
+		return 1
+	except: #catching every exception type
+		proc.terminate() #kill the process
+		print "[*] Too long, switching to next proxy"
+		return 0
+
+
+
+
+
+def test_all_proxy(time_limit):
+	"""
+	-> time_limit is an integer, number of second to wait
+	   before kill test of proxy
+	TODO:
+		- handle 404 & 111 and other web exceptions
+	"""
+	
+	now = datetime.datetime.now()
+	month = now.month
+	day = now.day
+	if(day < 10):
+		day = "0"+str(day)
+	if(month < 10):
+		month = "0"+str(month)
+	date = str(day)+"_"+str(month)
+	proxy_file_name = "proxyFromWeb_"+date+".txt"
+	proxy_file_name_secured = "proxyFromWeb_"+date+"_secured.txt"
+
+	proxy_file_safe = open(proxy_file_name_secured, "w")
+	proxy_file = open(proxy_file_name, "r")
+	for line in proxy_file:
+		line = line.split("\n")
+		line = line[0]
+		proxy = line
+
+		#proxy_safe = test_proxy(proxy)
+		proxy_safe = call_of_longfunction(time_limit)
+
+		if(proxy_safe):
+			proxy_file_safe.write(proxy+"\n")
+
+	proxy_file.close()
+	proxy_file_safe.close()
